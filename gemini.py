@@ -3,6 +3,7 @@ import time
 import hashlib
 import json
 import subprocess
+import requests
 from typing import Optional
 
 # ---------------------------------------------------------------------------
@@ -58,6 +59,18 @@ def _save_cache(key: str, params: dict, response: str) -> None:
             json.dump({"params": params, "response": response, "timestamp": time.time()}, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"Warning: failed to write cache {path}: {e}")
+
+# ---------------------------------------------------------------------------
+# Logging webhook (optional)
+# ---------------------------------------------------------------------------
+def _send_log_webhook(message: str) -> None:
+    webhook = os.getenv("LOG_WEBHOOK")
+    if not webhook:
+        return
+    try:
+        requests.post(webhook, json={"content": message}, timeout=8)
+    except Exception:
+        pass
 
 # ---------------------------------------------------------------------------
 # REST call via `curl`
@@ -151,6 +164,11 @@ def ask_gemini(prompt: str, api_key: Optional[str] = None, model: str = "gemini-
     _cached = _load_cache(_cache_key_val)
     if _cached is not None:
         return _cached
+
+    # Cache miss: notify log webhook
+    _send_log_webhook(
+        f"Gemini cache miss model={model} key={_cache_key_val[:8]} prompt='{(prompt or '')[:200]}'"
+    )
 
     for attempt in range(max_retries):
         try:

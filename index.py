@@ -34,7 +34,7 @@ def main():
     news="""https://www.nbclosangeles.com/
     https://www.presstelegram.com
     https://www.pasadenastarnews.com
-    https://smdp.com
+    https://smmirror.com/
     https://glendalenewspress.com
     https://burbankleader.com
     https://signalscv.com
@@ -236,6 +236,15 @@ def main():
         except Exception:
             pass
 
+    def _send_log_webhook(message: str):
+        webhook = os.getenv("LOG_WEBHOOK")
+        if not webhook:
+            return
+        try:
+            requests.post(webhook, json={"content": message}, timeout=8)
+        except Exception:
+            pass
+
     def _has_hours_ago(text: str) -> bool:
         if not text:
             return False
@@ -342,9 +351,12 @@ def main():
     def scan_page_for_chase(url: str):
         try:
             resp = requests.get(url, headers=HEADERS, timeout=12)
-        except requests.RequestException:
+        except requests.RequestException as e:
+            _send_log_webhook(f"News fetch error for {url}: {e}")
             return None
-        if resp.status_code >= 400:
+        if resp.status_code != 200:
+            preview = (resp.text or "")[:200]
+            _send_log_webhook(f"News non-200 {resp.status_code} for {url}: {preview}")
             return None
         content_type = (resp.headers.get("Content-Type") or "").lower()
         if "text/html" not in content_type:
