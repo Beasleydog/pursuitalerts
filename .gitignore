@@ -3,3 +3,7 @@ geminicache/*
 .env
 __pycache__/*
 last_chase.json
+
+connect.sh
+sshprivate.key
+sshpublic.pub
